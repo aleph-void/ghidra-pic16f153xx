@@ -12,7 +12,7 @@ did what and `GHIDRA-RARE.md` for the test results, the known gaps and the refer
 
 ## Install
 
-Download the zip for your Ghidra version from the fork's Releases page (built for Ghidra
+Download the zip for your Ghidra version from the fork's [Releases page](https://github.com/aleph-void/ghidra-pic16f153xx/releases) (built for Ghidra
 12.1.3, 12.1.4 and 12.2) and use *File > Install Extensions*, or copy the directory to
 `<ghidra>/Ghidra/Extensions/`. The module can be installed next to Ghidra's own PIC modules: its
 language ID differs from the official `PIC-16` and `PIC-16F` languages.
