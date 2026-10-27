@@ -1,93 +1,58 @@
 #
-# PIC-16 Main Section
+# PIC16(L)F153xx Main Section (Microchip enhanced mid-range core, 15-bit program counter)
 #   includes constants, memory space and common register space definitions
 #
-
-# STATUS bit definitions
-@define STATUS_IRP_BIT	7
-@define STATUS_RP0_BIT	5
-@define STATUS_Z_BIT	2
-@define STATUS_DC_BIT	1
-@define STATUS_C_BIT	0
-
-# STATUS bit masks used for setting
-@define STATUS_IRP_MASK 0x80
-@define STATUS_RP_MASK	0x60
-@define STATUS_Z_MASK	0x04
-@define STATUS_DC_MASK	0x02
-@define STATUS_C_MASK	0x01
-
-# STATUS bit masks used for clearing
-@define STATUS_IRP_CLEARMASK 0x7F
-@define STATUS_RP_CLEARMASK	0x9F
-@define STATUS_Z_CLEARMASK	0xFB
-@define STATUS_DC_CLEARMASK	0xFD
-@define STATUS_C_CLEARMASK	0xFE
+# Based on PR #667 (Michael Huebler) and on the PIC-16F files shipped with Ghidra
+# (Apache-2.0); Ghidra-Rare changes are listed in CREDITS.md.
+#
 
 define endian=little;
 define alignment=2;
 
-# Instruction Memory (ROM-based)
+# Instruction Memory: 14-bit words stored in 16-bit cells, addressed in words
+# (up to 32K words: PC is 15 bits wide)
 define space CODE type=ram_space wordsize=2 size=2 default;
 
-# General Purpose RAM Memory consists of 4-banks of 255-bytes for PIC16,
-# or 32-banks of 255 bytes each for PIC_16F.
-# Bank selection occurs using STATUS register bits RP0 & RP1
-define space DATA type=ram_space size=2; 
+# Data memory: 64 banks of 128 bytes selected by BSR<5:0> (13-bit data address).
+# FSR values 0x2000..0x29AF address the linear data memory, 0x8000..0xFFFF the program
+# flash (see GHIDRA-RARE.md)
+define space DATA type=ram_space size=2;
 
-# HWSTACK consists of a 8-word by 13-bit RAM and a corresponding to a hidden stack pointer (STKPTR).
-define space HWSTACK type=ram_space wordsize=2 size=1;  # WORDSIZE is actually 13-bits
- 
-define space register type=register_space size=2; 
+# Hardware return stack: 16 levels of 15 bits
+define space HWSTACK type=ram_space wordsize=2 size=1;
 
-# Program Counter (13-bits) - PC Latch: PCLATH<PC:12-8> / PCL<PC:7-0>
+define space register type=register_space size=2;
+
+# Program Counter (15 bits): PC<14:8> = PCLATH<6:0> on a PCL write, PC<7:0> = PCL
 define register offset=0x0000 size=2 [ PC ];
 
-# Stack Pointer
+# Stack Pointer (hardware return stack, not the STKPTR SFR)
 define register offset=0x0002 size=1 [ STKPTR ];
 
 # Working register
-define register offset=0x0003 size=1 [ W SkipNext ];
+define register offset=0x0003 size=1 [ W ];
 
-# Status bit registers (these do not really exist and must get reflected into the STATUS byte register)
-@if PROCESSOR == "PIC_16"
-define register offset=0x0007 size=1 [ IRP RP ];
-@endif
+# Scratch registers used for sub-constructor results
+define register offset=0x0010 size=1 [ ALURES ];
 
 @define C  "STATUS[0,1]"
 @define DC "STATUS[1,1]"
 @define Z  "STATUS[2,1]"
 @define PD "STATUS[3,1]"
 @define TO "STATUS[4,1]"
-@define PA0 "STATUS[5,1]"
+
+# STATUS bit definitions
+@define STATUS_Z_BIT	2
+@define STATUS_DC_BIT	1
+@define STATUS_C_BIT	0
 
 #
-# WARNING! - Reflection of these DATA-based registers with the corresponding register
-#            is not fully implemented due to the complexity of doing so within this language specification.
-#            Reflection of certain registers (e.g., STATUS) within other memory banks is also not modeled.
+# Core registers: the first 12 addresses of every data memory bank
+# (x00h-x0Bh and x80h-x8Bh ...), always mapped to bank 0 here.
+# All other data registers (SFRs, GPRs) are addressed as DATA:(BSR<<7 | f).
 #
-# NOTES	-
-#   1. Chips with voltage comparator and reference functions may replace A/D registers (ADCON0 and ADCON1) with (VMCON and VRCON)
-#      Instances of this include PIC16F627A/628A/648A (there could be others)
-#	2. If a specific PIC-16 has a different register set, this file and the pic16.pspec file may be copied/renamed and
-#      slightly modified to specify a the correct Register File Map.  
-#
-
-#
-# Bank-0 File Registers
-#
-@if PROCESSOR == "PIC_16"
 define DATA offset=0x0000 size=1 [
-	INDF	TMR0	PCL		STATUS	FSR		PORTA	PORTB	PORTC	PORTD	PORTE	PCLATH	INTCON	PIR1	PIR2	TMR1L	TMR1H
-];
-
-@elif PROCESSOR == "PIC_16F"
-define DATA offset=0x0000 size=1 [
-	INDF0	INDF1	PCL	STATUS	FSR0L	FSR0H	FSR1L	FSR1H	BSR	WREG	PCLATH	INTCON	_	_	_	_
+	INDF0	INDF1	PCL	STATUS	FSR0L	FSR0H	FSR1L	FSR1H	BSR	WREG	PCLATH	INTCON
 ];
 
 define DATA offset=0x0004 size=2 [ FSR0  FSR1 ];
-
-@endif
-
-# Additional Data Bank data registers are defined in the .PSPEC file.
